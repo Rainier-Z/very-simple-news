@@ -16,47 +16,59 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Install deps
-        run: pip install feedparser beautifulsoup4 flask httpx pyinstaller
-
-      - name: Debug - check Python
         run: |
-          python --version
-          pip list 2>/dev/null | grep -i pyinstaller
-          dir /s /b src\templates 2>nul || ls -la src/templates/
-        shell: bash
+          pip install feedparser beautifulsoup4 flask httpx pyinstaller 2>&1
+          echo "PIP_EXIT: $?"
+
+      - name: Debug env
+        run: |
+          python -c "import PyInstaller; print('PyInstaller OK:', PyInstaller.__version__)"
+          python -c "import flask; print('Flask OK')"
+          python -c "import feedparser; print('feedparser OK')"
+          python -c "import bs4; print('bs4 OK')"
 
       - name: Create key file
         env:
           KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: python -c "import os; open('src/_secret.py','w').write('DEEPSEEK_API_KEY = ' + repr(os.environ['KEY']))"
+        run: python -c "open('src/_secret.py','w').write('DEEPSEEK_API_KEY='+repr(__import__(\"os\").environ[\"KEY\"]))"
 
-      - name: Build
-        run: python -m PyInstaller --onedir --console --name=news-collector --add-data "src/templates;src/templates" --add-data "src/static;src/static" --hidden-import=src.collector --hidden-import=src.crawler --hidden-import=src.summarizer --hidden-import=src.config --hidden-import=src.models --hidden-import=src.sources --hidden-import=src._secret --noconfirm --clean src/__main__.py 2>&1
-
-      - name: Check output
-        run: ls -la dist/news-collector/ && ls -la dist/news-collector/news-collector.exe
-
-      - name: Create ZIP
+      - name: Run PyInstaller
         run: |
-          cd dist
-          zip -r news-collector.zip news-collector/
+          python -m PyInstaller --onedir --console --name=news-collector --add-data "src/templates;src/templates" --add-data "src/static;src/static" --noconfirm src/__main__.py 2>&1
+          echo "PYI_EXIT: $?"
+
+      - name: Verify
+        run: |
+          if [ -f dist/news-collector/news-collector.exe ]; then
+            echo "BUILD SUCCESS"
+            ls -la dist/news-collector/
+          else
+            echo "BUILD FAILED - no exe found"
+            ls -la dist/ 2>/dev/null || echo "no dist dir"
+          fi
         shell: bash
+
+      - name: Package
+        if: success()
+        run: Compress-Archive -Path dist/news-collector/* -DestinationPath dist/news-collector-win.zip
+        shell: powershell
 
       - name: Release
         uses: softprops/action-gh-release@v2
+        if: success()
         with:
-          files: dist/news-collector.zip
-          name: 简简单单的新闻 ${{ github.ref_name }}
+          files: dist/news-collector-win.zip
+          name: 简简单单的新闻 v1.0
           body: |
-            简简单单的新闻
+            简简单单的新闻 - Windows 桌面版
 
-            Windows 版本，下载解压后双击 news-collector.exe 即可使用。
+            下载解压后双击 news-collector.exe 即可使用。
 
             功能:
             - 每日自动采集 7 家国内主流媒体新闻
-            - 要点总结（AI 生成）
+            - 要点总结（AI 摘要）
             - 爬取全文保存为文件
             - 收藏 / 已读标记 / 搜索 / 筛选
