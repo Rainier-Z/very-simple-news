@@ -18,35 +18,29 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-          cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
+        run: pip install -r requirements.txt pyinstaller
 
-      - name: Build with PyInstaller
-        env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      - name: Create _secret.py with API key
         run: |
-          python build.py 2>&1
+          echo '# auto-generated' > src\_secret.py
+          echo 'DEEPSEEK_API_KEY = """' >> src\_secret.py
+          echo '${{ secrets.DEEPSEEK_API_KEY }}' >> src\_secret.py
+          echo '"""' >> src\_secret.py
         shell: bash
 
-      - name: Check build output
-        run: ls -la dist/news-collector/ 2>&1 || echo "NO OUTPUT"
+      - name: Build with PyInstaller
+        run: python -m PyInstaller --onedir --console --name=news-collector --add-data "src/templates;src/templates" --add-data "src/static;src/static" --noconfirm src/__main__.py
+        shell: bash
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: news-collector-windows
-          path: dist/news-collector/
+      - name: Verify output
+        run: ls -la dist/news-collector/
 
-      - name: Create Release
+      - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
-        if: success()
         with:
-          files: |
-            dist/news-collector/**
+          files: dist/news-collector/**
           name: 简简单单的新闻 ${{ github.ref_name }}
           body: |
             简简单单的新闻
