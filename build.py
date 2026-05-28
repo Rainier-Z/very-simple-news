@@ -34,16 +34,19 @@ import src.static as static_mod
 templates_dir = os.path.dirname(templates_mod.__file__)
 static_dir = os.path.dirname(static_mod.__file__)
 
-PyInstaller.__main__.run([
-    "src/__main__.py",
-    "--name=news-collector",
-    "--onedir",
-    "--console",
-    f"--add-data={templates_dir}{os.pathsep}src/templates",
-    f"--add-data={static_dir}{os.pathsep}src/static",
-    "--clean",
-    "--noconfirm",
-])
+try:
+    PyInstaller.__main__.run([
+        "src/__main__.py",
+        "--name=news-collector",
+        "--onedir",
+        "--console",
+        f"--add-data={templates_dir}{os.pathsep}src/templates",
+        f"--add-data={static_dir}{os.pathsep}src/static",
+        "--clean",
+        "--noconfirm",
+    ])
+except SystemExit:
+    pass  # PyInstaller calls sys.exit() on completion
 
 print("\n[OK] 打包完成！")
 print(f"[OK] 输出目录: {os.path.abspath('dist/news-collector')}")

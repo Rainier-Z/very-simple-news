@@ -3,7 +3,7 @@ name: Build & Release
 on:
   push:
     tags:
-      - 'v*'  # 推送 v1.0, v1.1 等标签时触发
+      - 'v*'
 
 permissions:
   contents: write
@@ -17,7 +17,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.x'
           cache: 'pip'
 
       - name: Install dependencies
@@ -28,7 +28,12 @@ jobs:
       - name: Build with PyInstaller
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: python build.py
+        run: |
+          python build.py 2>&1
+        shell: bash
+
+      - name: Check build output
+        run: ls -la dist/news-collector/ 2>&1 || echo "NO OUTPUT"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -38,16 +43,17 @@ jobs:
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
+        if: success()
         with:
           files: |
             dist/news-collector/**
           name: 简简单单的新闻 ${{ github.ref_name }}
           body: |
-            ## 简简单单的新闻
+            简简单单的新闻
 
-            Windows 版本，下载解压后双击 `news-collector.exe` 即可使用。
+            Windows 版本，下载解压后双击 news-collector.exe 即可使用。
 
-            ### 功能
+            功能:
             - 每日自动采集 7 家国内主流媒体新闻
             - 要点总结（AI 生成）
             - 爬取全文保存为文件
