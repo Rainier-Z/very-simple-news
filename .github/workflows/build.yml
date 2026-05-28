@@ -31,36 +31,35 @@ jobs:
           python -c "import bs4; print('bs4 OK')"
 
       - name: Create key file
+        shell: bash
         env:
           KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: python -c "open('src/_secret.py','w').write('DEEPSEEK_API_KEY='+repr(__import__(\"os\").environ[\"KEY\"]))"
-
-      - name: Run PyInstaller
         run: |
-          python -m PyInstaller --onedir --console --name=news-collector --add-data "src/templates;src/templates" --add-data "src/static;src/static" --noconfirm src/__main__.py 2>&1
-          echo "PYI_EXIT: $?"
+          python << 'PYEOF'
+          import os
+          with open('src/_secret.py', 'w') as f:
+              f.write('DEEPSEEK_API_KEY = ' + repr(os.environ['KEY']))
+          PYEOF
 
-      - name: Verify
-        run: |
-          if [ -f dist/news-collector/news-collector.exe ]; then
-            echo "BUILD SUCCESS"
-            ls -la dist/news-collector/
-          else
-            echo "BUILD FAILED - no exe found"
-            ls -la dist/ 2>/dev/null || echo "no dist dir"
-          fi
-        shell: bash
+      - name: Build single exe
+        run: python -m PyInstaller --onefile --console --name=news-collector --add-data "src/templates;src/templates" --add-data "src/static;src/static" --noconfirm src/__main__.py
 
       - name: Package
-        if: success()
-        run: Compress-Archive -Path dist/news-collector/* -DestinationPath dist/news-collector-win.zip
         shell: powershell
+        run: |
+          if (Test-Path "dist/news-collector.exe") {
+            Copy-Item dist/news-collector.exe dist/news-collector-win.exe
+            Write-Output "BUILD SUCCESS"
+          } else {
+            Write-Output "BUILD FAILED"
+            exit 1
+          }
 
       - name: Release
         uses: softprops/action-gh-release@v2
         if: success()
         with:
-          files: dist/news-collector-win.zip
+          files: dist/news-collector-win.exe
           name: 简简单单的新闻 v1.0
           body: |
             简简单单的新闻 - Windows 桌面版
