@@ -2,8 +2,7 @@ name: Build & Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: [ 'v*' ]
 
 permissions:
   contents: write
@@ -19,28 +18,37 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt pyinstaller
+      - name: Install deps
+        run: pip install feedparser beautifulsoup4 flask httpx pyinstaller
 
-      - name: Create _secret.py with API key
+      - name: Debug - check Python
         run: |
-          echo '# auto-generated' > src\_secret.py
-          echo 'DEEPSEEK_API_KEY = """' >> src\_secret.py
-          echo '${{ secrets.DEEPSEEK_API_KEY }}' >> src\_secret.py
-          echo '"""' >> src\_secret.py
+          python --version
+          pip list 2>/dev/null | grep -i pyinstaller
+          dir /s /b src\templates 2>nul || ls -la src/templates/
         shell: bash
 
-      - name: Build with PyInstaller
-        run: python -m PyInstaller --onedir --console --name=news-collector --add-data "src/templates;src/templates" --add-data "src/static;src/static" --noconfirm src/__main__.py
+      - name: Create key file
+        env:
+          KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: python -c "import os; open('src/_secret.py','w').write('DEEPSEEK_API_KEY = ' + repr(os.environ['KEY']))"
+
+      - name: Build
+        run: python -m PyInstaller --onedir --console --name=news-collector --add-data "src/templates;src/templates" --add-data "src/static;src/static" --hidden-import=src.collector --hidden-import=src.crawler --hidden-import=src.summarizer --hidden-import=src.config --hidden-import=src.models --hidden-import=src.sources --hidden-import=src._secret --noconfirm --clean src/__main__.py 2>&1
+
+      - name: Check output
+        run: ls -la dist/news-collector/ && ls -la dist/news-collector/news-collector.exe
+
+      - name: Create ZIP
+        run: |
+          cd dist
+          zip -r news-collector.zip news-collector/
         shell: bash
 
-      - name: Verify output
-        run: ls -la dist/news-collector/
-
-      - name: Upload Release Asset
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/news-collector/**
+          files: dist/news-collector.zip
           name: 简简单单的新闻 ${{ github.ref_name }}
           body: |
             简简单单的新闻
