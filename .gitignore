@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+news.db
+config.json
+_secret.py
+dist/
+build/
+*.spec
+*.egg-info/
+*.txt
+!requirements.txt

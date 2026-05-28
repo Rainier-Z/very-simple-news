@@ -1,0 +1,54 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 推送 v1.0, v1.1 等标签时触发
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: python build.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-collector-windows
+          path: dist/news-collector/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/news-collector/**
+          name: 简简单单的新闻 ${{ github.ref_name }}
+          body: |
+            ## 简简单单的新闻
+
+            Windows 版本，下载解压后双击 `news-collector.exe` 即可使用。
+
+            ### 功能
+            - 每日自动采集 7 家国内主流媒体新闻
+            - 要点总结（AI 生成）
+            - 爬取全文保存为文件
+            - 收藏 / 已读标记 / 搜索 / 筛选
