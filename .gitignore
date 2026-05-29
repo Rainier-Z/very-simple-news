@@ -1,13 +1,6 @@
 __pycache__/
 *.pyc
-news.db
-config.json
-_secret.py
 dist/
 build/
-*.spec
 *.egg-info/
-*.txt
 !requirements.txt
-CLAUDE.md
-开发者日志.md
