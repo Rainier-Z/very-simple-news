@@ -9,3 +9,5 @@ build/
 *.egg-info/
 *.txt
 !requirements.txt
+CLAUDE.md
+开发者日志.md
